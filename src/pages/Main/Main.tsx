@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import style from "./main.module.css"
-import { MessageTemplateEditor } from '../../widgets';
+import { MessageTemplateEditor, model } from '../../widgets/MessageTemplateEditor';
 
 export const Main = () => {
   const [widgetActive, setWidgetActive] = useState(false);
@@ -21,7 +21,7 @@ export const Main = () => {
         transition: 'right 1s ease'
 
       }}  >
-         <MessageTemplateEditor/>
+          {widgetActive? (<MessageTemplateEditor template={model.template} arrVarNames={model.addVarNames} callbackSave={model.callbackSave}/>) : null}
       </div>
     </div>
   );

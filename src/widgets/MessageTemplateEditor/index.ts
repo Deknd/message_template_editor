@@ -1,2 +1,4 @@
-export { MessageTemplateEditor } from "./MessageTemplateEditor";
+export { MessageTemplateEditor } from "./MessageTemplateEditor"
+export { model } from './model'
+
 

@@ -1,0 +1,1 @@
+export { deleteBlock } from './deleteBlock'

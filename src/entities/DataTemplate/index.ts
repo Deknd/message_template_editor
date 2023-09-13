@@ -1,0 +1,1 @@
+export { useDataTemplate, getTextFromFocusElement } from './dataTemplate'

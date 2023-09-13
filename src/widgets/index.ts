@@ -1,1 +1,0 @@
-export { MessageTemplateEditor } from "./MessageTemplateEditor";

@@ -39,5 +39,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "devDependencies": {
+    "eslint": "8.22.0",
+    "eslint-config-react-app": "^7.0.1",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.7.1"
+  },
+  "main": "index.tsx",
+  "author": "denis <fellix.knd@gmail.com>",
+  "license": "MIT"
 }

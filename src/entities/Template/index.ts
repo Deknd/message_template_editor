@@ -1,0 +1,2 @@
+import {SkeletonStructure} from "../sceletonStructure";
+

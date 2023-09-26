@@ -1,1 +1,1 @@
-export { addVarNameToTextWithPosition as addVarName  } from './addVarNameForText'
+export { addVarNameToTextWithPosition } from './addVarNameForText'

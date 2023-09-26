@@ -1,1 +1,1 @@
-export { generateTemplate } from './generateTemplate'
+export { messageGeneratorOnTemplate } from './messageGeneratorOnTemplate'

@@ -1,1 +1,1 @@
-export { useDataTemplate, getTextFromFocusElement } from './dataTemplate'
+export { useElementDataMap, getTextForElement } from './dataTemplate'

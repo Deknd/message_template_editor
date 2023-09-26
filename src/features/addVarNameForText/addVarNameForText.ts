@@ -1,28 +1,65 @@
-import {IPositionCursor} from "../../entities/PositionCursor";
 
-//возвращает текст со вставленной в него переменной и новую позицию курсора
+/**
+ * Inserts a variable name into the text associated with a specific index element
+ * at the specified cursor position and returns updated data.
+ *
+ * @param {string} varName - The variable name to be inserted.
+ * @param {Map<string, string>} indexDataMap - The Map that stores text data associated with index elements.
+ * @param {string} indexFocusElement - The index element to which the variable should be added.
+ * @param {function(string): number} positionCursor - A function that determines the current cursor position
+ *                                                    based on the specified index.
+ * @returns {Object} - An object containing the updated data and the new cursor position.
+ *
+ * This function creates a new map, 'newIndexDataMap', as a copy of the input map 'indexDataMap'.
+ * It then calls the 'insertVarNameIntoText' function to insert 'varName' into the text associated with
+ * the specified 'indexFocusElement' using the provided 'positionCursor'. The updated data is stored in 'newIndexDataMap'.
+ * The function also updates the cursor position by adding the length of 'varName' to the current position
+ * returned by 'positionCursor'. Finally, it returns an object with the updated data ('updateData')
+ * and the new cursor position ('newPositionCursor').
+ */
 export function addVarNameToTextWithPosition(
 	varName: string,
 	indexDataMap: Map<string, string>,
-	positionCursor: IPositionCursor,
-): { updateData: string, newPositionCursor: IPositionCursor } {
-	const updatedData = insertVarNameIntoText(varName, indexDataMap.get(positionCursor.indexElement), positionCursor.positionCursor);
-	const newPosition: IPositionCursor = {
-		indexElement: positionCursor.indexElement,
-		positionCursor: (positionCursor.positionCursor + varName.length)
+	indexFocusElement: string,
+	positionCursor: (indexElement: string) => number,
+): { updateData: Map<string, string>, newPositionCursor: { indexElement: string, positionCursor: number} } {
+	const newIndexDataMap = new Map(indexDataMap);
+	// Insert 'varName' into the text using the 'insertVarNameIntoText' function.
+	insertVarNameIntoText(varName, newIndexDataMap, indexFocusElement, positionCursor(indexFocusElement));
+	// Update the cursor position.
+	const newPosition: { indexElement: string, positionCursor: number} = {
+		indexElement: indexFocusElement,
+		positionCursor: (positionCursor(indexFocusElement) + varName.length)
 	};
-	return {updateData: updatedData, newPositionCursor: newPosition};
+	return {updateData: newIndexDataMap, newPositionCursor: newPosition};
 }
 
-//вставляет переменную в определенную позицию курсора
-function insertVarNameIntoText(varName: string, dataForTextarea: string | undefined, positionCursor: number): string {
-	if (dataForTextarea) {
-		if (dataForTextarea.length !== 0) {
-			return dataForTextarea.slice(0, positionCursor) + varName + dataForTextarea.slice(positionCursor);
-		} else {
-			return varName;
-		}
+/**
+ * Inserts a variable name into the given text associated with a specific index element
+ * at the specified cursor position.
+ *
+ * @param {string} varName - The variable name to be inserted.
+ * @param {Map<string, string>} indexDataMap - The Map that stores text data associated with index elements.
+ * @param {string} indexFocusElement - The index element to which the variable should be added.
+ * @param {number} positionCursor - The cursor position specifying where to insert the variable name.
+ *
+ * This function inserts `varName` into the text associated with the provided `indexFocusElement` in the `indexDataMap`.
+ * If the `indexFocusElement` does not exist in the map, a new entry is created with `varName`.
+ * If the text for the `indexFocusElement` is empty or undefined, it is replaced with `varName`.
+ * If the `positionCursor` is out of bounds, `varName` is appended to the end of the text.
+ * Otherwise, `varName` is inserted at the specified `positionCursor` within the text.
+ */
+function insertVarNameIntoText(varName: string, indexDataMap: Map<string, string>, indexFocusElement: string, positionCursor: number) {
+	if (!indexDataMap.has(indexFocusElement)) {
+		indexDataMap.set(indexFocusElement, varName);
 	} else {
-		return varName;
+		const existingData = indexDataMap.get(indexFocusElement);
+		if (existingData === undefined || existingData.length === 0) {
+			indexDataMap.set(indexFocusElement, varName);
+			return;
+		} else {
+			indexDataMap.set(indexFocusElement, existingData.slice(0, positionCursor) + varName + existingData.slice(positionCursor));
+		}
 	}
 }
+

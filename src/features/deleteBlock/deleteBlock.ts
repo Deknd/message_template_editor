@@ -1,144 +1,118 @@
 import {SkeletonStructure} from "../../entities/sceletonStructure";
-import {getTextFromFocusElement} from "../../entities/DataTemplate";
-
+import {getTextForElement} from "../../entities/DataTemplate";
+/**
+ * This function deletes an element from a data structure, updates the index-to-data mapping,
+ * and calculates the new cursor position after the deletion.
+ *
+ * @param {Array<number>} indexElement - The index of the element to be deleted.
+ * @param {Map<string, string>} indexDataMap - A map where keys are element indexes and values are element data.
+ * @param {SkeletonStructure} structComp - The main data structure.
+ * @returns {[Map<string, string>, SkeletonStructure, { indexElement: string, positionCursor: number }]} - A tuple
+ * containing the updated index-to-data map, the modified data structure, and the new cursor position.
+ */
 export function deleteBlock(
 	indexElement: Array<number>,
 	indexDataMap: Map<string, string>,
 	structComp: SkeletonStructure,
-
-): [Map<string, string>, SkeletonStructure, {indexElement: string, positionCursor: number}] {
-	const newIndexDataMap = glueText(indexElement, indexDataMap, structComp);
-	const newStruct = deleteElementEditStructure(indexElement, structComp);
-	const newPosition = updatingCoursePositionOnDeletionOnElement(indexElement, structComp, newIndexDataMap)
+): [Map<string, string>, SkeletonStructure, { indexElement: string, positionCursor: number }] {
+	let newIndexDataMap = new Map<string, string>(indexDataMap);
+	let newPosition: { indexElement: string, positionCursor: number } = {indexElement: "0", positionCursor: 0};
+	// Create a copy of the data structure.
+	const newStruct = SkeletonStructure.getNewStruct(structComp);
+	// Find the parent element that contains the element to be deleted.
+	const parentFocusElement = newStruct.findParentElementByPath(indexElement);
+	if (parentFocusElement) {
+		// Combine and update text data, then delete the element from the data map.
+		glueText(indexElement, newIndexDataMap, parentFocusElement);
+		// Delete the element from the data structure and get the new focus element position.
+		const positionInArrayNewFocusElement = deleteElementEditStructure(indexElement, parentFocusElement);
+		// Calculate the new cursor position.
+		newPosition = updatingCoursePositionOnDeletionOnElement(positionInArrayNewFocusElement, newIndexDataMap, parentFocusElement);
+	}
 	return [newIndexDataMap, newStruct, newPosition];
 }
-
-function glueText(deletionIndexElement: Array<number>, indexDataMap: Map<string, string>, structComp: SkeletonStructure){ //: Map<string, string>
-	if (deletionIndexElement.length === 1) {
-		const indexPositionDeletedElement = structComp.findPositionElementInTemplateStructure(deletionIndexElement.join(","));
-		const arrayChildren = structComp.children;
-		if(arrayChildren === null){
-			return indexDataMap;
-		}
-		const child = arrayChildren[indexPositionDeletedElement-1];
-		if(child === null){
-			return indexDataMap;
-		}
-		const indexChild = child.indexElement;
-		if(indexChild === null){
-			return indexDataMap;
-		}
-		const indexElementThatWillRemain = indexChild.join(",") //getIndexString(arrayChildren[indexPositionDeletedElement - 1].getIndex());
-		const indexesElementsThatWillDelete = structComp.findTwoNextElements(indexPositionDeletedElement - 1);
-		const sliceOneText = getTextFromFocusElement(indexElementThatWillRemain, indexDataMap);
-		const sliceTwoText = getTextFromFocusElement(indexesElementsThatWillDelete.indexElementTwoString, indexDataMap);
-		const newMap = createMapForGlueText(indexElementThatWillRemain, indexesElementsThatWillDelete, sliceOneText, sliceTwoText, indexDataMap);
-		for (let i = 0; i < 5; i++) {
-			const indexTextDelete = [...deletionIndexElement, i].join(",");
-			if (newMap.has(indexTextDelete)) {
-				newMap.delete(indexTextDelete);
+/**
+ * This function combines text data from the element before and after the focused element in a data structure,
+ * after removing the focused element, its children, and the element next to it.
+ *
+ * @param {Array<number>} deletionIndexElement - The index of the element to be deleted.
+ * @param {Map<string, string>} newIndexDataMap - A map where keys are element indexes and values are element data.
+ * @param {SkeletonStructure} parentFocusElement - The parent element containing the focused element,
+ *        its children, and the next adjacent element.
+ */
+function glueText(deletionIndexElement: Array<number>, newIndexDataMap: Map<string, string>, parentFocusElement: SkeletonStructure) {
+	// Find the position of the focused element within the parent structure.
+	const positionFocusElement = parentFocusElement.findPositionElementInTemplateStructure(deletionIndexElement.join(","));
+	const children = parentFocusElement.children;
+	if (children) {
+		const elementThenRemains = children[positionFocusElement - 1];
+		const elementThenDelete = children[positionFocusElement + 1];
+		if (elementThenRemains && elementThenDelete) {
+			const indexElementThenRemains = elementThenRemains.indexElement;
+			const indexElementThenDelete = elementThenDelete.indexElement;
+			if (indexElementThenRemains && indexElementThenDelete) {
+				// Get text data from the adjacent elements in newIndexDataMap.
+				const sliceOneText = getTextForElement(indexElementThenRemains.join(","), newIndexDataMap);
+				const sliceTwoText = getTextForElement(indexElementThenDelete.join(","), newIndexDataMap);
+				newIndexDataMap.set(indexElementThenRemains.join(","), (sliceOneText + sliceTwoText));
+				newIndexDataMap.delete(indexElementThenDelete.join(","));
+				// Iterate over newMap keys to remove keys related to the deleted element.
+				for (const key of newIndexDataMap.keys()) {
+					const arrayKey = key.split(",").map(Number);
+					// Check if the keys are associated with the deleted element using deletionIndexElement.
+					if (arrayKey.length >= deletionIndexElement.length && deletionIndexElement.every((value, index) => arrayKey[index] === value)) {
+						newIndexDataMap.delete(key);
+					}
+				}
 			}
 		}
-		return newMap;
-	} else {
-		const newMap = new Map(indexDataMap);
-		for (let i = 0; i < 5; i++) {
-			const indexTextDelete = [...deletionIndexElement, i].join(",");
-			if (newMap.has(indexTextDelete)) {
-				newMap.delete(indexTextDelete);
-			}
-		}
-		return newMap;
-	}
-
-}
-
-function createMapForGlueText(indexRemaining: string, indexes: { indexElementOneString: string, indexElementTwoString: string }, sliceOne: string, sliceTwo: string, mapIndexData: Map<string, string>) {
-	const newMap = new Map(mapIndexData);
-	newMap.delete(indexes.indexElementOneString);
-	newMap.delete(indexes.indexElementTwoString);
-	newMap.set(indexRemaining, (sliceOne + sliceTwo));
-	return newMap;
-}
-
-function deleteElementEditStructure(indexElement: Array<number>, structure: SkeletonStructure): SkeletonStructure {
-	if (indexElement.length === 1) {
-		return deleteInTemplateStructure(indexElement.join(","), structure);
-	} else {
-		return deleteInIfThenElseComp(indexElement, structure);
 	}
 }
-
-function deleteInTemplateStructure(indexElement: string, structure: SkeletonStructure): SkeletonStructure {
-	const indexFocusElement = structure.findPositionElementInTemplateStructure(indexElement);
-	const childrenArray = structure.children;
-	if(childrenArray === null){
-		return structure;
+/**
+ * This function removes an element from a data structure and returns the index of the element
+ * that will be the focus after the deletion.
+ *
+ * @param {Array<number>} indexElement - The index of the element to be deleted.
+ * @param {SkeletonStructure} parentElement - The parent element containing the structure.
+ * @returns {number} - The index of the element that will be focused after deletion.
+ */
+function deleteElementEditStructure(indexElement: Array<number>, parentElement: SkeletonStructure): number {
+	// Find the position of the element with the given index within the parent structure.
+	const positionDeleteElement = parentElement.findPositionElementInTemplateStructure(indexElement.join(","));
+	const children = parentElement.children;
+	if (children) {
+		children.splice(positionDeleteElement, 2);
 	}
-	const result = childrenArray.filter((_, i) => {
-		return i !== indexFocusElement && i !== indexFocusElement + 1;
-	});
-
-	return new SkeletonStructure(true, null, result);
+	return positionDeleteElement - 1;
 }
-
-function deleteInIfThenElseComp(indexElement: Array<number>, structure: SkeletonStructure) {
-	const indexElementChildren = indexElement[indexElement.length - 1];
-	const compParent = structure.findParentElementByPath(indexElement);
-	if (compParent) {
-		if (indexElementChildren === 2) {
-			compParent.deleteAfterThen();
-		} else compParent.deleteAfterElse();
-	}
-	return new SkeletonStructure(true, null, structure.children);
-}
-
+/**
+ * This function updates the cursor position when an element is deleted from a structure.
+ *
+ * @param {number} positionNewFocusElementInArray - The new position of the focus element in the array.
+ * @param {Map<string, string>} indexDataMap - A map containing index-to-data mappings.
+ * @param {SkeletonStructure} parent - The parent structure.
+ * @returns {{indexElement: string, positionCursor: number}} - An object containing the updated index and cursor position.
+ */
 function updatingCoursePositionOnDeletionOnElement(
-	deletionIndexElement: Array<number>,
-	oldStructComp: SkeletonStructure,
-	newMapIndexData: Map<string, string>
+	positionNewFocusElementInArray: number,
+	indexDataMap: Map<string, string>,
+	parent: SkeletonStructure,
 ): { indexElement: string, positionCursor: number } {
-	if (deletionIndexElement.length === 1) {
-		const indexPositionDeletedElement = oldStructComp.findPositionElementInTemplateStructure(deletionIndexElement.join(","));
-		const arrayChildren = oldStructComp.children;
-		if(arrayChildren === null){
-			const text = getTextFromFocusElement([0].join(","), newMapIndexData);
-			return { indexElement: '0', positionCursor: text.length}
-		}
-		const elementIsStaying = arrayChildren[indexPositionDeletedElement - 1];
-		if(elementIsStaying === null){
-			const text = getTextFromFocusElement([0].join(","), newMapIndexData);
-			return { indexElement: '0', positionCursor: text.length}
-		}
-		const indexElement = elementIsStaying.indexElement
-		if(indexElement === null){
-			const text = getTextFromFocusElement([0].join(","), newMapIndexData);
-			return { indexElement: '0', positionCursor: text.length}
-		}
-		const indexElementAsString = indexElement.join(",");
-		const text = getTextFromFocusElement(indexElementAsString, newMapIndexData);
-		return { indexElement: indexElementAsString, positionCursor: text.length };
-	} else {
-		const parentOfDeletedElement = oldStructComp.findParentElementByPath(deletionIndexElement);
-		const lastIndexDeletedElement = deletionIndexElement[deletionIndexElement.length - 1];
-		if (parentOfDeletedElement) {
-			const focusIndex = parentOfDeletedElement.indexElement;
-			if(focusIndex === null){
-				const text = getTextFromFocusElement([0].join(","), newMapIndexData);
-				return { indexElement: '0', positionCursor: text.length}
-			}
-			if (lastIndexDeletedElement === 4) {
-				const focusElement = [...focusIndex, 3].join(",");
-				const text = getTextFromFocusElement( focusElement, newMapIndexData );
-				return { indexElement: focusElement, positionCursor: text.length }
-			} else {
-				const focusElement = [...focusIndex, 1].join(",");
-				const text = getTextFromFocusElement( focusElement, newMapIndexData );
-				return  { indexElement: focusElement, positionCursor: text.length };
-			}
-		} else {
-			const text = getTextFromFocusElement([0].join(","), newMapIndexData);
-			return { indexElement: [0].join(","), positionCursor: text.length };
-		}
+	const children = parent.children;
+	if (!children) {
+		return {indexElement: "0", positionCursor: 0};
 	}
+	const focusElement = children[positionNewFocusElementInArray];
+	if (!focusElement) {
+		return {indexElement: "0", positionCursor: 0};
+	}
+	const indexElement = focusElement.indexElement;
+	if (!indexElement) {
+		return {indexElement: "0", positionCursor: 0};
+	}
+	const indexElementToString = indexElement.join(",");
+	const data = indexDataMap.get(indexElementToString);
+	if (data) {
+		return {indexElement: indexElementToString, positionCursor: data.length };
+	} else return {indexElement: indexElementToString, positionCursor: 0};
 }

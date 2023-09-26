@@ -1,0 +1,54 @@
+.container_if_then_else {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.container_button_line {
+    flex: 0;
+    width: 5em;
+    margin-bottom: 2.3em;
+}
+
+.button_delete {
+    border-radius: 0.5em;
+    width: 3.2em;
+    height: 3.2em;
+    background-color: var(--background-color-input);
+    font-size: 0.5em;
+    color: var(--text-color);
+}
+
+.container_line {
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    margin-top: 0.3em;
+}
+
+.line {
+    border-left: 3px dotted var(--background-color-input);
+    height: 100%;
+}
+.block_if_then_else{
+    flex: 1;
+    margin-left: 5px;
+}
+.child_block_if_then_else{
+    margin-left: 3.5em;
+}
+.input_block{
+    display: flex;
+}
+.label_block{
+    width: 4em;
+    text-align: right;
+    height: 1.8em;
+    line-height: 1.8em;
+}
+.label{
+    border-radius: 0.3em;
+    padding: 0.1em 0.2em;
+}
+.variable_input{
+    width: 100%;
+}

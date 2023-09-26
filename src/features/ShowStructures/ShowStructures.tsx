@@ -1,63 +1,84 @@
 import React from "react";
+
 import {SkeletonStructure} from "../../entities/sceletonStructure";
-import {DynamicHeightInput} from "../../entities/DynamicHeightInput";
+import {EditableTextBlock} from "../../entities/EditableTextBlock";
+
 import {IfThenElse} from "./IfThenElse";
 
 interface ShowStructuresProps {
-	arrayComponents: Array<SkeletonStructure | null> | null
+	componentsArray: Array<SkeletonStructure | null> | null;
 	mapIndexData: Map<string, string>;
-	setData:  (indexElement: string, dataText: string) => void;
-	positionCursor: {
-		indexElement: string,
-		positionCursor: number
-	};
-	setPositionCursor:  (indexElement: string, positionCursor: number) => void
+	updateElementText: (indexElement: string, dataText: string) => void;
+	focusElement: string;
+	getPosition: (indexElement: string) => number;
+	setPositionCursor: (indexElement: string, positionCursor: number) => void;
 	deleteBlock: (indexElement: Array<number>) => void;
 }
-//для отображения блока ввода
+
+/**
+ * The ShowStructures component is responsible for rendering the structure of a message template.
+ * It displays child elements, and if a child can have further nested elements, it renders them using the IfThenElse component recursively.
+ *
+ * @param {Object} props - The props for the ShowStructures component.
+ * @param {Array<SkeletonStructure | null> | null} props.componentsArray - An array of child elements in the message template structure.
+ * @param {Map<string, string>} props.mapIndexData - A map associating element IDs with textual information.
+ * @param {(indexElement: string, dataText: string) => void} props.updateElementText - A function for setting data for an element in the structure.
+ * @param {string} props.focusElement - The ID of the element currently in focus.
+ * @param {(indexElement: string) => number} props.getPosition - A function for getting the cursor position within the text of an element.
+ * @param {(indexElement: string, positionCursor: number) => void} props.setPositionCursor - A function for setting the cursor position within the text of an element.
+ * @param {(indexElement: Array<number>) => void} props.deleteBlock - A function for deleting an IfThenElse block and the subsequent EditableTextBlock block.
+ *
+ * @returns {JSX.Element} Returns a JSX element representing the display of the message template structure.
+ */
 export const ShowStructures: React.FC<ShowStructuresProps> = ({
-	arrayComponents,
+	componentsArray,
 	mapIndexData,
-	setData,
-	positionCursor,
+	updateElementText,
+	focusElement,
+	getPosition,
 	setPositionCursor,
 	deleteBlock
 }) => {
-	const array = arrayComponents? arrayComponents : [];
+	// Create an array of components or use an empty array if no data is provided
+	const array = componentsArray || [];
 
 	return (
 		<div>
 			{array.map((element, index: number) => {
-				if(element === null){
+				if (element === null) {
 					return null;
 				}
+				// If the element cannot have child elements and has an ID
 				if (!element.couldBeChildren && element.indexElement !== null) {
-
+					// Render the EditableTextBlock component for text editing
 					return (
-						<DynamicHeightInput
-							key={index}
-							mapIndexData={mapIndexData}
-							setData={setData}
+						<EditableTextBlock
+							key={`${index}${element.indexElement.join(",")}show`}
+							indexDataMap={mapIndexData}
+							updateElementText={updateElementText}
 							indexElement={element.indexElement.join(",")}
-							positionCursor={positionCursor}
+							focusElement={focusElement}
+							getPosition={getPosition}
 							setPositionCursor={setPositionCursor}/>
 					);
 				} else {
-					if(element.couldBeChildren && element.indexElement !== null){
+					// If the element can have child elements and has an ID
+					if (element.couldBeChildren && element.indexElement !== null) {
+						// Render the IfThenElse component for conditional rendering
 						return (
 							< IfThenElse
-								key={index}
-								idElement={element.indexElement}
-								struct={element.children}
+								key={`${index}${element.indexElement.join(",")}show`}
+								elementId={element.indexElement}
+								childElements={element.children}
 								deleteBlock={deleteBlock}
-								mapIndexData={mapIndexData}
-								setData={setData}
-								positionCursor={positionCursor}
+								indexDataMap={mapIndexData}
+								updateElementText={updateElementText}
+								focusElement={focusElement}
+								getPosition={getPosition}
 								setPositionCursor={setPositionCursor}
 							/>
 						);
 					}
-
 				}
 			})
 			}

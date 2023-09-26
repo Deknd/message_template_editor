@@ -1,0 +1,73 @@
+/* Import colors */
+@import "../../shared/lib/colors.module.css";
+
+
+/* Main container styles */
+.container {
+    background-color: var(--background-color);
+    padding: 1em 2em;
+    overflow: auto;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+/* Hide scrollbar */
+.container::-webkit-scrollbar {
+    width: 0;
+}
+
+/* Title styles */
+.title_color{
+    color: var(--text-color);
+}
+.widget_title_font_size{
+    font-size: 2.5em;
+}
+.section_title_font_size{
+    font-size: 1.3em;
+}
+.title_container{
+    margin-bottom: 0.5em;
+}
+/* IF-THEN-ELSE button styles */
+.if_then_else_button{
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+    background-color: var(--background-color-button);
+    color: var(--primary-text-color);
+    border-radius: 0.5em;
+    font-size: 1.1em;
+    height: 2.7em;
+}
+/* Button container styles */
+.button_container{
+    display: flex;
+    justify-content: center;
+    gap: 4%;
+    margin-top: 1.5em;
+    margin-bottom: 2em;
+}
+/* Generic button styles */
+.button{
+    border-radius: 0.5em;
+    height: 2em;
+    min-width: 6em;
+    font-size: 1.2em;
+    color: var(--text-color);
+}
+/* Function button styles */
+.function_button{
+    background-color: var(--background-function-button);
+}
+/* Close button styles */
+.close_button{
+    background-color: var(--background-close-button);
+}
+/* Edit button styles */
+.edit_button{
+    margin-bottom: 3em;
+}

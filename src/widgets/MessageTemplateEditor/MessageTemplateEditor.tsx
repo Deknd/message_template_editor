@@ -1,22 +1,30 @@
-import React, {useEffect, useState} from "react";
+import React, {useMemo, useState} from "react";
 
 import {ShowStructures} from "../../features/ShowStructures";
-import {addVarName} from "../../features/addVarNameForText";
+import { addVarNameToTextWithPosition } from "../../features/addVarNameForText";
 import {addElement} from "../../features/addIfThenElseBlock";
-import { deleteBlock } from "../../features/deleteBlock";
-import { generateTemplate } from "../../features/generateTemplate";
+import {deleteBlock} from "../../features/deleteBlock";
 
-import {SkeletonStructure, Template} from "../../entities/sceletonStructure";
+import {SkeletonStructure} from "../../entities/sceletonStructure";
 import {VarNameButtons} from "../../entities/VarNameButtons";
 import {usePositionCursor} from "../../entities/PositionCursor";
-import {useDataTemplate} from "../../entities/DataTemplate";
+import {useElementDataMap} from "../../entities/DataTemplate";
+import {MessagePreview} from "../MessagePreview";
+import {getTemplate, Template} from "../../entities/Template";
 
+import styles from "./message_template_editor.module.css";
+/**
+ * Props for the MessageTemplateEditor component.
+ * @interface
+ * @property {Array<string>} arrVarNames - An array of variable names (required).
+ * @property {Template | undefined} template - The message template (optional).
+ * @property {(template: Template) => void} callbackSave - An asynchronous function to save the template.
+ */
 interface MessageTemplateEditorProps {
-	arrVarNames: () => Array<string>;
-	template: () => Template
-	callbackSave: () => void;
+	arrVarNames: Array<string>;
+	template: Template;
+	callbackSave: (template: Template) => void;
 }
-
 
 export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 	{
@@ -25,98 +33,140 @@ export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 		callbackSave
 	}
 ) => {
-	let arrayVarNames: Array<string> = [];
-	useEffect(()=>{
-		arrayVarNames = arrVarNames()
-		console.log("загруженый из памяти",template())
 
-	},[])
+	const CONTAINER_ID = "container_message_template_editor";
+	// Create an array of unique variables, including variables from props (arrVarNames)
+	// and variables from the template, if it exists.
+	const varNamesArrayUniq = useMemo(() => {
+		let combinedArray = [...arrVarNames];
+		if (template) {
+			combinedArray = [...combinedArray, ...template.arrVarName];
+		}
+		return Array.from(new Set(combinedArray));
+	}, [arrVarNames, template]);
+	// Create a memoized template structure.
+	const templateStructure = useMemo(() => {
+		let struct = SkeletonStructure.startStructure();
+		if (template && template.structure) {
+			struct = SkeletonStructure.getNewStruct(template.structure);
+		}
+		return struct;
+	}, [template]);
+	// Create a memoized index data map.
+	const indexDataMapLoad = useMemo(() => {
+		const indexDataMap = new Map<string, string>();
+		if (template) {
+			for (const [key, value] of template.indexDataArray) {
+				indexDataMap.set(key, value);
+			}
+		}
+		return indexDataMap;
+	}, [template]);
 
-	const [positionCursor, setPosition] = usePositionCursor();
-	const [indexDataMap, updateIndexDataMap, setIndexDataMap] = useDataTemplate();
-	const [ struct, setStruct ] = useState<SkeletonStructure>(new SkeletonStructure(true, null,[new SkeletonStructure(false,[0])]))
-
-	//добавляет переменную в шаблон, обновляет положение курсора
+	const [focusElement, getPosition, setPosition, deletePosition] = usePositionCursor();
+	const [indexDataMap, updateElementText, setElementDataMap] = useElementDataMap(indexDataMapLoad);
+	const [struct, setStruct] = useState<SkeletonStructure>(templateStructure);
+	// Function to add a variable to the template at the current cursor position.
 	function addVarNameForData(varName: string) {
-		const {updateData, newPositionCursor} = addVarName(varName, indexDataMap, positionCursor);
-		updateIndexDataMap(newPositionCursor.indexElement, updateData);
+		const {updateData, newPositionCursor} = addVarNameToTextWithPosition(varName, indexDataMap, focusElement, getPosition);
+		setElementDataMap(updateData)
 		setPosition(newPositionCursor.indexElement, newPositionCursor.positionCursor);
 	}
-
-	function onClick(){
-		const structNew = addElement(positionCursor, indexDataMap, struct);
-		setStruct(structNew[0])
-		const newPos = structNew[2];
-		setPosition(newPos.indexElement,newPos.positionCursor)
-		setIndexDataMap(structNew[1])
+	// Function to add an "if-then-else" block to the template at the current cursor position.
+	function addBlockIfThenElse() {
+		const [ structNew, newMap, newPosition ] = addElement( focusElement, getPosition(focusElement), indexDataMap, struct );
+		setStruct(structNew);
+		setPosition(newPosition.indexElement, newPosition.positionCursor);
+		setElementDataMap(newMap);
 	}
-	function deleteBlockElement(indexElement: number[]){
-		const newData = deleteBlock(indexElement, indexDataMap, struct)
-		setIndexDataMap(newData[0]);
-		setStruct(newData[1]);
-		const newPos = newData[2];
-		setPosition(newPos.indexElement, newPos.positionCursor)
+	// Function to delete an "if-then-else" block from the template.
+	// If there is divided text within the block, it will be merged.
+	function deleteBlockElement(indexElement: number[]) {
+		const [newIndexDataMap, newStruct, newPosition] = deleteBlock(indexElement, indexDataMap, struct);
+		setElementDataMap(newIndexDataMap);
+		setStruct(newStruct);
+		deletePosition(indexElement, newPosition.indexElement, newPosition.positionCursor);
 	}
-	function saveTemplate(){
-		let template: Template;
-
-		const arrayMap =new Array<Array<string>>()
-		indexDataMap.forEach((value, key)=>{
-			arrayMap.push([value, key]);
-		})
-		template = {
-			arrVarName: arrayVarNames,
-			structure: struct,
-			indexDataMap: arrayMap,
+	// Function to save the template by calling the provided callback function.
+	function saveTemplate() {
+		callbackSave(getTemplate(varNamesArrayUniq, struct, indexDataMap));
+	}
+	// Function to close and remove the widget from the container.
+	function close() {
+		const container = document.getElementById(CONTAINER_ID);
+		if (container) {
+			const child = container.firstChild;
+			if (child) {
+				container.removeChild(child);
+			}
 		}
-		const templateJSON = JSON.stringify(template);
-		console.log(templateJSON);
-		const returnStruct: Template = JSON.parse(templateJSON);
-		console.log("old obj: ",template, " parse Obj: ",returnStruct)
-		localStorage.setItem('template', templateJSON);
-		//generateTemplate(struct, indexDataMap, arrVarNames);
 	}
 
-
+	const [isPreview, setIsPreview] = useState<boolean>(false);
 	return (
+
+
 		<div
-			style={{
-				height: "100%",
-				backgroundColor: "blue",
-				paddingTop: "1em",
-				paddingLeft: "1em",
-				paddingRight: "1em",
-				borderColor: "red",
-				borderWidth: "2px",
-				borderStyle: "solid"
-			}}>
-			{`Position id: ${positionCursor.indexElement}, positionCursor: ${positionCursor.positionCursor}`}
-			<VarNameButtons arrayVarName={arrayVarNames} addVarNameForText={addVarNameForData}/>
-			<button onClick={onClick} >
-				{"Click to add: IF {some_variable} THEN [then_value] ELSE [else_value]"}
-			</button>
-			<ShowStructures
-				arrayComponents={struct.children}
-				mapIndexData={indexDataMap}
-				setData={updateIndexDataMap}
-				positionCursor={positionCursor}
-				setPositionCursor={setPosition}
-				deleteBlock={deleteBlockElement}/>
-			<div style={{
-				display: "flex",
-				justifyContent: "center",
-				gap: "10em",
-			}}>
-				<span>
-					<button>Preview</button>
-				</span>
-				<span>
-					<button onClick={saveTemplate}>Save</button>
-				</span>
-				<span>
-					<button>Close</button>
-				</span>
-			</div>
+			className={styles.container}>
+
+			{!isPreview ? (
+				<div>
+					<label className={`${styles.title_color} ${styles.widget_title_font_size}`}>
+						Message Template Editor
+					</label>
+					<VarNameButtons arrayVarName={varNamesArrayUniq} addVarNameForText={addVarNameForData}/>
+					<div className={styles.container_title}>
+						<label className={`${styles.title_color} ${styles.section_title_font_size}`}>
+							Click to add
+						</label>
+					</div>
+					<button className={styles.if_then_else_button} onClick={addBlockIfThenElse}>
+						{"IF {some_variable} THEN [then_value] ELSE [else_value]"}
+					</button>
+					<div className={styles.container_title}>
+						<label className={`${styles.title_color} ${styles.section_title_font_size}`}>
+							Message template
+						</label>
+					</div>
+					<ShowStructures
+						componentsArray={struct.children}
+						mapIndexData={indexDataMap}
+						updateElementText={updateElementText}
+						focusElement={focusElement}
+						getPosition={getPosition}
+						setPositionCursor={setPosition}
+						deleteBlock={deleteBlockElement}/>
+					<div className={styles.button_container}>
+						<button
+							className={`${styles.button} ${styles.function_button}`}
+							onClick={() => setIsPreview(!isPreview)}>
+							Preview
+						</button>
+						<button
+							className={`${styles.button} ${styles.function_button}`}
+							onClick={saveTemplate}>
+							Save
+						</button>
+						<button
+							className={`${styles.button} ${styles.close_button}`}
+							onClick={close}>
+							Close
+						</button>
+					</div>
+
+				</div>
+			) : (
+				<div>
+					<MessagePreview arrVarNames={varNamesArrayUniq}
+									template={getTemplate(varNamesArrayUniq, struct, indexDataMap)}/>
+					<button
+						className={`${styles.button} ${styles.function_button} ${styles.button_edit}`}
+						onClick={() => setIsPreview(!isPreview)}
+					>
+						EditTemplate
+					</button>
+				</div>
+			)}
 		</div>
 	);
 };

@@ -1,4 +1,4 @@
 export { MessageTemplateEditor } from "./MessageTemplateEditor"
-export { model } from './model'
+export { arrVarNames, template, callbackSave } from './model'
 
 

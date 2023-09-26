@@ -1,0 +1,15 @@
+@import '../../shared/lib/colors.module.css';
+
+.dynamic_height_input{
+    width: 100%;
+    resize: none;
+    border-radius: 0.5em;
+    background-color: var(--background-color-input);
+    color: var(--text-color);
+    caret-color: var(--text-color);
+}
+.dynamic_height_input:focus{
+    outline: none !important;
+    border:1px solid var(--primary-text-color);
+    box-shadow: 0 0 5px var(--text-color);
+}

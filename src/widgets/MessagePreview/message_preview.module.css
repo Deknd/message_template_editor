@@ -1,0 +1,35 @@
+@import "../../shared/lib/colors.module.css";
+/* Sets the text color for elements using the custom variable --text-color. */
+.title_text_color{
+    color: var(--text-color);
+}
+/* Defines the font size for widget titles.*/
+.widget_title_font_size{
+    font-size: 2.5em;
+}
+/* Defines the font size for section titles.*/
+.section_title_font_size{
+    font-size: 1.3em;
+}
+/* Defines the font size for variable titles. */
+.variable_title_font_size{
+    font-size: 0.9em;
+}
+/* Styles for the preview container of the widget. */
+.preview_container{
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--primary-text-color);
+    padding: 1em;
+    border-radius: 1em;
+    margin-bottom: 1em;
+}
+/* Sets the background color for input elements. */
+.input_background{
+    background-color: var(--background-input-read);
+}
+/* Styles for title containers. */
+.title_container{
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}

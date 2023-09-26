@@ -1,15 +1,20 @@
-import {Template} from "../../../entities/sceletonStructure";
+import {Template} from "../../../entities/Template";
 
-function addVarNames(): Array<string>{
-	const arrVarNames = localStorage.arrVarNames ? JSON.parse(localStorage.arrVarNames) : ['firstname', 'lastname', 'company', 'position'];
-	return arrVarNames;
-}
-function callbackSave(){
+// Retrieve an array of variable names from localStorage or set a default value
+export const arrVarNames =  localStorage.arrVarNames ? JSON.parse(localStorage.arrVarNames) : ["firstname", "lastname", "company", "position"];
 
+// Function for saving a template to localStorage
+export function callbackSave(template: Template) {
+	try {
+		const templateJSON = JSON.stringify(template);
+		localStorage.setItem('template', templateJSON);
+	} catch (error) {
+		console.error("Error while saving the template:", error);
+	}
 }
-function template(): Template{
-	const template = localStorage.template  ? JSON.parse(localStorage.template) : null;
-	return template;
+// Retrieve a template from localStorage or set a default value
+export function template() {
+	return localStorage.template ? JSON.parse(localStorage.template) : null;
 }
 
-export const model = { addVarNames, callbackSave, template};
+

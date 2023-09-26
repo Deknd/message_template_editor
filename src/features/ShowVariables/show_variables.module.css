@@ -1,0 +1,14 @@
+.variable_container{
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-around;
+    gap: 2vw;
+}
+.variable_label{
+    font-size: 0.9em;
+    color: var(--text-color);
+}
+.variable_input{
+    min-width: 23em;
+}

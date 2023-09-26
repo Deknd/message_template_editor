@@ -1,28 +1,36 @@
-import React, { useState } from 'react';
-import style from "./main.module.css"
-import { MessageTemplateEditor, model } from '../../widgets/MessageTemplateEditor';
+import React from 'react';
+
+import style from './main.module.css';
+import { MessageTemplateEditor, arrVarNames, template, callbackSave} from '../../widgets/MessageTemplateEditor';
+import {createRoot} from "react-dom/client";
+
 
 export const Main = () => {
-  const [widgetActive, setWidgetActive] = useState(false);
 
-  const activateWidget = () => {
-    setWidgetActive(!widgetActive);
-  };
-  return (
-    <div>
-      <button className={style.button} onClick={activateWidget} >Message Editor</button>
-      <div style={{
-        position: 'fixed',
-        top: '0',
-        bottom: '0',
-        right: widgetActive ?  '0%' : '-100%',
-        width: '85%',
-        height: '100%',
-        transition: 'right 1s ease'
+	const toggleWidget = () => {
+		const temp = template();
+		const containerMain = document.getElementById("container_message_template_editor");
+		const container = document.createElement("div");
+		const messageTemplateEditor = (
+			<MessageTemplateEditor arrVarNames={arrVarNames} template={temp} callbackSave={callbackSave} />
+		);
+		const root = createRoot(container);
+		root.render(messageTemplateEditor);
 
-      }}  >
-          {widgetActive? (<MessageTemplateEditor template={model.template} arrVarNames={model.addVarNames} callbackSave={model.callbackSave}/>) : null}
-      </div>
-    </div>
-  );
+		if(containerMain){
+			containerMain.appendChild(container);
+		}
+	};
+
+	return (
+		<div>
+			<button className={style.button} onClick={toggleWidget}>
+				Message Template Editor
+			</button>
+			<div id={"container_message_template_editor"}>
+			</div>
+		</div>
+	);
 };
+
+

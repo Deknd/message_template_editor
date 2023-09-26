@@ -1,2 +1,1 @@
-export { SkeletonStructure } from './SkeletonStructure'
-export type { Template } from './SkeletonStructure'
+export { SkeletonStructure} from './SkeletonStructure'

@@ -1,1 +1,1 @@
-export { SkeletonStructure} from './SkeletonStructure'
+export { SkeletonStructure, isElement} from './SkeletonStructure'

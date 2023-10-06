@@ -22,10 +22,11 @@ export const ShowVariables: React.FC<ShowVariablesProps> = ({arrVarNames, update
 				const key = Object.keys(str)[0];
 				return (
 					<div key={`${key}${index}`}>
-						<label className={styles.variable_label}>
+						<label htmlFor={`{${key}}`} className={styles.variable_label}>
 							{`{${key}}`}
 						</label>
 						<EditableTextBlock
+							id={`{${key}}`}
 							indexElement={key}
 							className={styles.variable_input}
 							updateElementText={updateElementText}

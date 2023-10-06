@@ -3,10 +3,16 @@
 .dynamic_height_input{
     width: 100%;
     resize: none;
+    min-height: 1.1em;
     border-radius: 0.5em;
     background-color: var(--background-color-input);
     color: var(--text-color);
     caret-color: var(--text-color);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.dynamic_height_input::-webkit-scrollbar {
+    width: 0;
 }
 .dynamic_height_input:focus{
     outline: none !important;

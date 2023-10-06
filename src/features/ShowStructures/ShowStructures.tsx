@@ -39,18 +39,14 @@ export const ShowStructures: React.FC<ShowStructuresProps> = ({
 	setPositionCursor,
 	deleteBlock
 }) => {
-	// Create an array of components or use an empty array if no data is provided
 	const array = componentsArray || [];
-
 	return (
 		<div>
 			{array.map((element, index: number) => {
 				if (element === null) {
 					return null;
 				}
-				// If the element cannot have child elements and has an ID
 				if (!element.couldBeChildren && element.indexElement !== null) {
-					// Render the EditableTextBlock component for text editing
 					return (
 						<EditableTextBlock
 							key={`${index}${element.indexElement.join(",")}show`}
@@ -62,9 +58,7 @@ export const ShowStructures: React.FC<ShowStructuresProps> = ({
 							setPositionCursor={setPositionCursor}/>
 					);
 				} else {
-					// If the element can have child elements and has an ID
 					if (element.couldBeChildren && element.indexElement !== null) {
-						// Render the IfThenElse component for conditional rendering
 						return (
 							< IfThenElse
 								key={`${index}${element.indexElement.join(",")}show`}

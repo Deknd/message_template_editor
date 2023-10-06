@@ -1,4 +1,3 @@
-
 /**
  * Inserts a variable name into the text associated with a specific index element
  * at the specified cursor position and returns updated data.
@@ -17,19 +16,36 @@
  * returned by 'positionCursor'. Finally, it returns an object with the updated data ('updateData')
  * and the new cursor position ('newPositionCursor').
  */
+
 export function addVarNameToTextWithPosition(
 	varName: string,
 	indexDataMap: Map<string, string>,
 	indexFocusElement: string,
-	positionCursor: (indexElement: string) => number,
-): { updateData: Map<string, string>, newPositionCursor: { indexElement: string, positionCursor: number} } {
+	positionCursor: number,
+): { updateData: Map<string, string>, newPositionCursor: { indexElement: string, positionCursor: number } } {
 	const newIndexDataMap = new Map(indexDataMap);
-	// Insert 'varName' into the text using the 'insertVarNameIntoText' function.
-	insertVarNameIntoText(varName, newIndexDataMap, indexFocusElement, positionCursor(indexFocusElement));
-	// Update the cursor position.
-	const newPosition: { indexElement: string, positionCursor: number} = {
+	let pos: number = 0;
+	if (positionCursor < 0) {
+		pos = 0;
+	} else {
+		if (newIndexDataMap.has(indexFocusElement)) {
+			const lengthText = newIndexDataMap.get(indexFocusElement)!.length;
+			if (lengthText < positionCursor) {
+				pos = lengthText;
+			} else {
+				pos = positionCursor;
+			}
+		}
+	}
+
+	if (varName.length === 0) {
+		return {updateData: newIndexDataMap, newPositionCursor: {indexElement: indexFocusElement, positionCursor: pos}};
+	}
+	insertVarNameIntoText(varName, newIndexDataMap, indexFocusElement, pos);
+
+	const newPosition: { indexElement: string, positionCursor: number } = {
 		indexElement: indexFocusElement,
-		positionCursor: (positionCursor(indexFocusElement) + varName.length)
+		positionCursor: (pos + varName.length)
 	};
 	return {updateData: newIndexDataMap, newPositionCursor: newPosition};
 }
@@ -54,12 +70,7 @@ function insertVarNameIntoText(varName: string, indexDataMap: Map<string, string
 		indexDataMap.set(indexFocusElement, varName);
 	} else {
 		const existingData = indexDataMap.get(indexFocusElement);
-		if (existingData === undefined || existingData.length === 0) {
-			indexDataMap.set(indexFocusElement, varName);
-			return;
-		} else {
-			indexDataMap.set(indexFocusElement, existingData.slice(0, positionCursor) + varName + existingData.slice(positionCursor));
-		}
+		indexDataMap.set(indexFocusElement, existingData!.slice(0, positionCursor) + varName + existingData!.slice(positionCursor));
 	}
 }
 

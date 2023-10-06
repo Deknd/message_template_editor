@@ -1,4 +1,4 @@
-import {SkeletonStructure} from "../sceletonStructure";
+import {isElement, SkeletonStructure} from "../sceletonStructure";
 
 /**
  * The `Template` interface is intended for storing and using a message template.
@@ -33,16 +33,20 @@ export interface Template {
 export function getTemplate(arrVarName: Array<string>, structure: SkeletonStructure, indexDataMap: Map<string, string>): Template {
 	const indexData_mapToArray = new Array<Array<string>>();
 	indexDataMap.forEach((value, key) => {
-		indexData_mapToArray.push([key, value]);
+		if (isElement(key, structure)) {
+
+			indexData_mapToArray.push([key, value]);
+		}
 	});
 	const uniqueVarName = new Set<string>();
-	for (const [_, value] of indexData_mapToArray) {
+	for (const [, value] of indexData_mapToArray) {
 		value.split(/(\{[^}]+\})/).forEach(part => {
 			const stringWithoutBraces = part.replace(/{|}/g, "");
 			if (arrVarName.includes(stringWithoutBraces)) {
 				uniqueVarName.add(stringWithoutBraces);
 			}
 		});
+
 	}
 	return {
 		arrVarName: Array.from(uniqueVarName),
@@ -50,3 +54,4 @@ export function getTemplate(arrVarName: Array<string>, structure: SkeletonStruct
 		indexDataArray: indexData_mapToArray
 	};
 }
+

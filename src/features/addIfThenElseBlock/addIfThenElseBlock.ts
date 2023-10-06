@@ -1,4 +1,4 @@
-import {SkeletonStructure} from "../../entities/sceletonStructure";
+import {isElement, SkeletonStructure} from "../../entities/sceletonStructure";
 import {getTextForElement} from "../../entities/DataTemplate";
 
 /**
@@ -12,6 +12,7 @@ import {getTextForElement} from "../../entities/DataTemplate";
  *   - newStruct: A new template structure with the added element.
  *   - newMap: A new map with updated text data based on the cursor position.
  *   - newPosition: An object representing the updated cursor position after adding the element.
+ * * @throws Error if the provided structure is invalid or if there's an issue with the input data.
  */
 export function addElement(
 	indexFocusElement: string,
@@ -19,11 +20,22 @@ export function addElement(
 	indexDataMap: Map<string, string>,
 	structComp: SkeletonStructure,
 ): [newStruct: SkeletonStructure, newMap: Map<string, string>, newPosition: { indexElement: string, positionCursor: number }] {
-	console.log("pos: ",positionCursor)
-	// Create a new template structure based on the original one.
+	if (!structComp.couldBeChildren) {
+		throw new Error("The provided structure is not a top-level structure because top-level structures have children.");
+	}
+
+	if (structComp.children!.length < 1) {
+		throw new Error("The provided structure is not a top-level structure because top-level structures should have at least one child.");
+	}
+
+	if (structComp.block !== null || structComp.indexElement !== null) {
+		throw new Error("The provided structure is not a top-level structure because it cannot have a block or an index.");
+	}
+	if (!isElement(indexFocusElement, structComp)) {
+		throw new Error("The index does not match this structure.");
+	}
 	const struct = SkeletonStructure.getNewStruct(structComp);
 	const arrayIndex = indexFocusElement.split(",").map(Number);
-	// Find the parent element in the template structure.
 	const parent = struct.findParentElementByPath(arrayIndex);
 	let newMap = new Map<string, string>(indexDataMap);
 	let newPosition: {
@@ -31,12 +43,12 @@ export function addElement(
 		positionCursor: number;
 	} = {indexElement: "0", positionCursor: 0};
 	if (parent) {
-		// Add a new block to the template structure based on the cursor position.
 		parent.addBlockToParent(indexFocusElement);
-		// Split the text and update the map based on the cursor position.
 		newMap = splitText(indexFocusElement, positionCursor, newMap, parent);
-		// Calculate and set the new cursor position after adding the element.
-		newPosition = updatePositionWhenAddElement(indexFocusElement, parent);
+		const isNewPosition = updatePositionWhenAddElement(indexFocusElement, parent);
+		if (isNewPosition) {
+			newPosition = isNewPosition;
+		}
 	}
 	return [struct, newMap, newPosition];
 }
@@ -57,22 +69,17 @@ function splitText(
 	parent: SkeletonStructure
 ): Map<string, string> {
 
-	// Find the position of the focused element within the parent structure.
 	const positionFocusElement = parent.findPositionElementInTemplateStructure(indexFocusElement);
 	const children = parent.children;
 	if (children) {
 		const focusElement = children[positionFocusElement];
-		// Check if the focused element does not belong to an "if" block.
 		if (focusElement.block !== "if") {
 			const newElement = children[positionFocusElement + 2];
 			if (newElement) {
 				const indexTwoElement = newElement.indexElement;
-				if (indexTwoElement) {
+				if (indexTwoElement !== null) {
 					const indexTwoElementString = indexTwoElement.join(",");
-					// Get the text from the focused element.
 					const focusText = getTextForElement(indexFocusElement, indexDataMap);
-					console.log("pos: ",positionCursor)
-
 					const sliceBeforeCursor = focusText.slice(0, positionCursor);
 					const sliceAfterCursor = focusText.slice(positionCursor);
 					indexDataMap.set(indexFocusElement, sliceBeforeCursor);
@@ -81,7 +88,6 @@ function splitText(
 			}
 		}
 	}
-	console.log(indexDataMap)
 	return indexDataMap;
 }
 
@@ -95,14 +101,12 @@ function splitText(
 function updatePositionWhenAddElement(focusIndexElement: string, parentElement: SkeletonStructure): {
 	indexElement: string;
 	positionCursor: number;
-} {
-	// Find the position of the focused element within the parent structure.
+} | undefined {
 	const positionFocusElement = parentElement.findPositionElementInTemplateStructure(focusIndexElement);
 	const children = parentElement.children;
 	let correctPosition = 1;
 	if (children) {
 		const focusElement = children[positionFocusElement];
-		// If the focused element belongs to an "if" block, adjust the position.
 		if (focusElement.block !== null && focusElement.block === "if") {
 			correctPosition++;
 		}
@@ -119,10 +123,5 @@ function updatePositionWhenAddElement(focusIndexElement: string, parentElement: 
 			}
 		}
 	}
-	// If no new element found, return the original focus index with cursor at the start.
-	return {
-		indexElement: focusIndexElement,
-		positionCursor: 0
-	};
 }
 

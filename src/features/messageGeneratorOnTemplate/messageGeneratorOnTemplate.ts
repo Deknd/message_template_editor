@@ -1,4 +1,4 @@
-import {SkeletonStructure} from "../../entities/sceletonStructure";
+import {isElement, SkeletonStructure} from "../../entities/sceletonStructure";
 import {Template} from "../../entities/Template";
 
 enum BlocType {
@@ -19,18 +19,99 @@ interface VarName {
  * @param {Template} template - The template containing the structure and data for message generation.
  * @param {Object[]} varNames - An array of variable names mapped to their values.
  * @returns {string} - The generated text message.
+ * @throws {Error} Throws an error if the template structure is invalid.
  */
-export function messageGeneratorOnTemplate(template: Template, varNames: { [p: string]: string }[]): string {
-
-	// Generate the ID data map based on the template and variable names.
-	const idDataMap = generationIdDataMap(template, varNames);
-
-	// Create a tree structure from the template's skeleton structure and ID data map.
+export function messageGeneratorOnTemplate(template: Template, varNames: Object[]): string {
+	const variableNames = canConvertToObjectArray(varNames);
+	validationTemplate(template);
+	const idDataMap = generationIdDataMap(template, variableNames);
 	const tree = createTree(template.structure, idDataMap);
-
-	// Generate the text message by traversing the tree structure.
 	return tree.generateText();
 }
+
+/**
+ * Validates the template structure to ensure it conforms to expected rules.
+ *
+ * @param {Template} template - The template to validate.
+ * @throws {Error} Throws an error if the template structure is invalid.
+ */
+const validationTemplate = (template: Template) => {
+	const struct = template.structure;
+	const indexData = template.indexDataArray;
+	if (!struct.couldBeChildren) {
+		throw new Error("Template is invalid because the root element has not children.");
+	}
+
+	if (struct.block !== null || struct.indexElement !== null) {
+		throw new Error("Template is invalid because the root structure should not have a block or index.");
+	}
+	isStruct(struct);
+
+	for (const [key,] of indexData) {
+		if (!isElement(key, struct)) {
+			throw new Error("Template is invalid because the data does not match the structure.");
+		}
+	}
+};
+
+/**
+ * Recursively validates the structure of the SkeletonStructure.
+ *
+ * @param {SkeletonStructure} struct - The structure to validate.
+ * @throws {Error} Throws an error if the structure is invalid.
+ */
+function isStruct(struct: SkeletonStructure) {
+	const children = struct.children!;
+	if (children.length < 1) {
+		throw new Error(`Template is invalid because child elements must have at least one child.`);
+	}
+	const blockType = new Array<string>("else", "then", "if");
+	for (const child of children) {
+		if (!child.couldBeChildren) {
+			if (child.block !== null) {
+				const block = blockType.pop();
+				if (block !== child.block) {
+					throw new Error(`Template is invalid because the structure of child elements is not valid. Expected block ${block}, but found ${child.block}`);
+				}
+			}
+			if (child.indexElement === null) {
+				throw new Error(`Template is invalid because not all elements have an index.`);
+			}
+		} else {
+			isStruct(child);
+		}
+	}
+}
+
+/**
+ * The ObjectWithStrings interface represents objects where keys are strings and values are also strings.
+ */
+interface ObjectWithStrings {
+	[key: string]: string;
+}
+
+/**
+ * Checks whether the given object conforms to the ObjectWithStrings interface.
+ *
+ * @param {object} obj - The object to check.
+ * @returns {boolean} - true if the object conforms to the ObjectWithStrings interface, otherwise false.
+ */
+function isObjectWithStrings(obj: object): obj is ObjectWithStrings {
+
+	const keys = Object.keys(obj);
+	return keys.every((key) => typeof (obj as ObjectWithStrings)[key] === "string");
+}
+
+/**
+ * Filters an array of objects, keeping only those that conform to the ObjectWithStrings interface.
+ *
+ * @param {object[]} varNames - The array of objects to filter.
+ * @returns {ObjectWithStrings[]} - An array of objects that conform to the ObjectWithStrings interface.
+ */
+function canConvertToObjectArray(varNames: object[]): ObjectWithStrings[] {
+	return varNames.filter((obj) => isObjectWithStrings(obj)) as ObjectWithStrings[];
+}
+
 
 /**
  * Recursively processes a SkeletonStructure, building a hierarchical TreeText structure.
@@ -40,39 +121,20 @@ export function messageGeneratorOnTemplate(template: Template, varNames: { [p: s
  * @returns {TreeText | null} - The root node of the generated TreeText hierarchy, or null if no child nodes are created.
  */
 function createTree(structure: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>) {
-	const children = structure.children;
-	// Create the top-level TreeText node with the "TOP" block type.
+	const children = structure.children!;
 	const top = new TreeText(BlocType.TOP, null, null, new Array<TreeText>(), null);
-	if (children !== null) {
-		children.forEach(struct => {
-			const childrenThen = top.childrenThen;
-			if (childrenThen) {
-				if (!struct.couldBeChildren) {
-					// If the current structure cannot have children, it represents a leaf node.
-					// Extract its ID and look up corresponding data in the idDataMap.
-					const id = struct.indexElement;
-					if (id) {
-						const idString = id.join(",");
-						if (idDataMap.has(idString)) {
-							const data = idDataMap.get(idString);
-							if (data) {
-								// Create a new TreeText node and add it as a child.
-								childrenThen.push(new TreeText(null, id, data, null, null));
-							}
-						}
-					}
-				} else {
-					// If the current structure can have children, recursively build the subtree.
-					const treeChild = treeRound(struct, idDataMap);
-					if (treeChild) {
-						// Add the generated subtree as a child.
-						childrenThen.push(treeChild);
-					}
-				}
-			}
-		});
-	}
-	// Return the top-level TreeText node representing the generated hierarchy.
+	children.forEach(struct => {
+		const childrenThen = top.childrenThen!;
+		if (!struct.couldBeChildren) {
+			const id = struct.indexElement!;
+			const idString = id.join(",");
+			const data = idDataMap.get(idString)!;
+			childrenThen.push(new TreeText(null, id, data, null, null));
+		} else {
+			const treeChild = treeRound(struct, idDataMap)!;
+			childrenThen.push(treeChild);
+		}
+	});
 	return top;
 }
 
@@ -83,82 +145,55 @@ function createTree(structure: SkeletonStructure, idDataMap: Map<string, (string
  * @param {Map<string, (string | VarName)[]>} idDataMap - A map containing data based on IDs.
  * @returns {TreeText | null} - The root node of the generated TreeText hierarchy, or null if no child nodes are created.
  */
-function treeRound(structure: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>): TreeText | null {
-	const children = structure.children;
-	let child: TreeText | null = null;
+function treeRound(structure: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>): TreeText {
+	const children = structure.children!;
+	let child: TreeText;
 	let isBlock: BlocType;
-	if (children !== null) {
-		children.forEach(struct => {
-				const block = struct.block;
-				const couldBeChildren = struct.couldBeChildren;
-				if (!couldBeChildren) {
-					if (block !== null) {
-						if (block === BlocType.IF) {
-							// If the current structure represents a leaf node (cannot have children).
-							const id = struct.indexElement;
-							if (id) {
-								const idString = id?.join(",");
-								if (idDataMap.has(idString)) {
-									const data = idDataMap.get(idString);
-									if (data) {
-										child = new TreeText(BlocType.IF, id, data, new Array<TreeText>(), new Array<TreeText>());
-									}
-								}
-							}
-						}
-						if (block === BlocType.THEN) {
-							// Handle "THEN" block: delegate to pushTree function.
-							pushTree(child, struct, idDataMap, BlocType.THEN);
-							isBlock = BlocType.THEN;
-						}
-						if (block === BlocType.ELSE) {
-							// Handle "ELSE" block: delegate to pushTree function.
-							pushTree(child, struct, idDataMap, BlocType.ELSE);
-							isBlock = BlocType.ELSE;
-						}
-					} else {
-						// Handle a scenario where a block type is missing.
-						if (isBlock === BlocType.THEN) {
-							// If the previous block was "THEN," delegate to pushTree function.
-							pushTree(child, struct, idDataMap, BlocType.THEN);
-						}
-						if (isBlock === BlocType.ELSE) {
-							// If the previous block was "ELSE," delegate to pushTree function.
-							pushTree(child, struct, idDataMap, BlocType.ELSE);
-						}
+	children.forEach(struct => {
+			const block = struct.block;
+			const couldBeChildren = struct.couldBeChildren;
+			if (!couldBeChildren) {
+				if (block !== null) {
+					if (block === BlocType.IF) {
+						const id = struct.indexElement!;
+						const idString = id.join(",");
+						const data = idDataMap.get(idString)!;
+						child = new TreeText(BlocType.IF, id, data, new Array<TreeText>(), new Array<TreeText>());
+					}
+					if (block === BlocType.THEN) {
+						pushTree(child!, struct, idDataMap, BlocType.THEN);
+						isBlock = BlocType.THEN;
+					}
+					if (block === BlocType.ELSE) {
+						pushTree(child!, struct, idDataMap, BlocType.ELSE);
+						isBlock = BlocType.ELSE;
 					}
 				} else {
-					// If the current structure can have children, and there's already a child node.
-					if (child) {
-						// Delegate to childPushTree function to process child nodes.
-						childPushTree(struct, idDataMap, child, isBlock);
+					if (isBlock === BlocType.THEN) {
+						pushTree(child!, struct, idDataMap, BlocType.THEN);
+					}
+					if (isBlock === BlocType.ELSE) {
+						pushTree(child!, struct, idDataMap, BlocType.ELSE);
 					}
 				}
+			} else {
+				childPushTree(struct, idDataMap, child!, isBlock);
 			}
-		);
-	}
-	// Return the child node or null if no child nodes were created.
-	return child ? child : null;
+		}
+	);
+	return child!;
 }
 
 
 function childPushTree(struct: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>, child: TreeText, isBlock: BlocType) {
-	// Recursively process the current structure to generate a TreeText node.
 	const treeChildText = treeRound(struct, idDataMap);
-	if (treeChildText !== null) {
-		// Check the block type of the parent node and append the generated child node accordingly.
-		if (isBlock === BlocType.THEN) {
-			const childArray = child.childrenThen;
-			if (childArray) {
-				childArray.push(treeChildText);
-			}
-		}
-		if (isBlock === BlocType.ELSE) {
-			const childArray = child.childrenElse;
-			if (childArray) {
-				childArray.push(treeChildText);
-			}
-		}
+	if (isBlock === BlocType.THEN) {
+		const childArray = child.childrenThen!;
+		childArray.push(treeChildText);
+	}
+	if (isBlock === BlocType.ELSE) {
+		const childArray = child.childrenElse!;
+		childArray.push(treeChildText);
 	}
 }
 
@@ -171,29 +206,17 @@ function childPushTree(struct: SkeletonStructure, idDataMap: Map<string, (string
  * @param {Map<string, (string | VarName)[]>} idDataMap - A map containing data based on IDs.
  * @param {BlocType} block - The block type to set for the added child nodes.
  */
-function pushTree(child: TreeText | null, struct: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>, block: BlocType) {
-	if (child !== null) {
-		let childrenBlock;
-		// Determine the appropriate child array based on the provided block type.
-		if (block === BlocType.THEN) {
-			childrenBlock = child.childrenThen;
-		} else {
-			childrenBlock = child.childrenElse;
-		}
-		if (childrenBlock) {
-			const id = struct.indexElement;
-			if (id) {
-				const idString = id.join(",");
-				if (idDataMap.has(idString)) {
-					const data = idDataMap.get(idString);
-					if (data) {
-						// Create a new TreeText node with the specified block type, ID, data, and null child arrays.
-						childrenBlock.push(new TreeText(block, id, data, null, null));
-					}
-				}
-			}
-		}
+function pushTree(child: TreeText, struct: SkeletonStructure, idDataMap: Map<string, (string | VarName)[]>, block: BlocType) {
+	let childrenBlock;
+	if (block === BlocType.THEN) {
+		childrenBlock = child.childrenThen;
+	} else {
+		childrenBlock = child.childrenElse;
 	}
+	const id = struct.indexElement!;
+	const idString = id.join(",");
+	const data = idDataMap.get(idString)!;
+	childrenBlock!.push(new TreeText(block, id, data, null, null));
 }
 
 /**
@@ -237,48 +260,40 @@ class TreeText {
 	 */
 	generateText(): string {
 		const text = new Array<string>();
-
-		// Process "top" block type.
 		if (this.blockType === BlocType.TOP) {
-			this.childrenThen?.forEach(child => {
-				if (child !== null) {
-					text.push(child.generateText());
-				}
+			this.childrenThen!.forEach(child => {
+				text.push(child.generateText());
 			});
 		}
-
-		// Process "then" or "else" block types.
 		if (this.blockType === null || this.blockType === BlocType.THEN || this.blockType === BlocType.ELSE) {
-			this.textData?.forEach(textData => {
-				if (typeof textData === "string") {
-					text.push(textData);
+			this.textData!.forEach(textVarName => {
+				if (typeof textVarName === "string") {
+					text.push(textVarName);
 				} else {
-					text.push(textData.value);
+					text.push(textVarName.value);
 				}
 			});
 		}
-
-		// Process "if" block type.
 		if (this.blockType === BlocType.IF) {
 			const conditionText = new Array<string>();
-			this.textData?.forEach(textData => {
-				if (typeof textData === "string") {
-					conditionText.push(textData);
+			this.textData!.forEach(textVarName => {
+				if (typeof textVarName === "string") {
+					conditionText.push(textVarName);
 				} else {
-					conditionText.push(textData.value);
+					conditionText.push(textVarName.value);
 				}
 			});
 			if (conditionText.join("").length !== 0) {
-				this.childrenThen?.forEach(child => {
+				this.childrenThen!.forEach(child => {
 					text.push(child.generateText());
 				});
 			} else {
-				this.childrenElse?.forEach(child => {
+				this.childrenElse!.forEach(child => {
 					text.push(child.generateText());
 				});
 			}
 		}
-		return text.length > 0 ? text.join("") : "";
+		return text.join("");
 	}
 }
 
@@ -290,41 +305,30 @@ class TreeText {
  * @param {Array<{ [p: string]: string }>} varNames - An array of objects representing key-value pairs for variable names.
  * @returns {Map<string, (string | VarName)[]>} - A map with keys representing IDs and values containing an array of text and VarName objects.
  */
-function generationIdDataMap(template: Template, varNames: { [p: string]: string }[]) {
-	// Create a map for quick access to index data.
+function generationIdDataMap(template: Template, varNames: ObjectWithStrings[]): Map<string, (string | VarName)[]> {
 	const indexDataMap = new Map<string, string>();
 	for (const [key, value] of template.indexDataArray) {
 		indexDataMap.set(key, value);
 	}
-	const arrayChildren = template.structure.children;
-	if (arrayChildren === null) {
-		return new Map<string, Array<string | VarName>>();
-	}
-	// Flatten the structure into a linear array.
+	const arrayChildren = template.structure.children!;
 	const orderElementsArray = flattenStructureToArray(arrayChildren);
-	// Create a map of variable names indexed by their corresponding IDs.
 	const nameVarNameMap = createIndexVarName(varNames, template);
-	// Generate the final ID data map based on the flattened structure, index data, and variable names.
 	return createIdDataMapFromIndex(orderElementsArray, indexDataMap, nameVarNameMap);
 }
 
-	/**
-	 * Converts a hierarchical structure into an array to extract the order in which elements should be displayed.
-	 * @param {Array<SkeletonStructure>} arrayChildren - An array of SkeletonStructure representing the hierarchical structure.
-	 * @returns {Array<Array<number>>} - An array containing the order of elements.
-	 * @throws {Error} If the input is not an array or if any element in the array is invalid.
-	 */
-	function flattenStructureToArray(arrayChildren: Array<SkeletonStructure>): Array<Array<number>> {
-		if (!Array.isArray(arrayChildren)) {
-			throw new Error("Input must be an array.");
-		}
-		const resultArray = new Array<Array<number>>();
-		// Iterate through each child element in the hierarchical structure and flatten it.
-		for (const child of arrayChildren) {
-			flattenChildElement(child, resultArray);
-		}
-		return resultArray;
+/**
+ * Converts a hierarchical structure into an array to extract the order in which elements should be displayed.
+ * @param {Array<SkeletonStructure>} arrayChildren - An array of SkeletonStructure representing the hierarchical structure.
+ * @returns {Array<Array<number>>} - An array containing the order of elements.
+ * @throws {Error} If the input is not an array or if any element in the array is invalid.
+ */
+function flattenStructureToArray(arrayChildren: Array<SkeletonStructure>): Array<Array<number>> {
+	const resultArray = new Array<Array<number>>();
+	for (const child of arrayChildren) {
+		flattenChildElement(child, resultArray);
 	}
+	return resultArray;
+}
 
 /**
  * Recursively processes a child element of the structure and adds its index to the resultArray if it cannot have children.
@@ -333,27 +337,13 @@ function generationIdDataMap(template: Template, varNames: { [p: string]: string
  * @throws {Error} If the childElement is invalid or contains unexpected data.
  */
 function flattenChildElement(childElement: SkeletonStructure, resultArray: Array<Array<number>>) {
-	if (!childElement || typeof childElement !== "object") {
-		throw new Error("Invalid child element found.");
-	}
-
-	// If the childElement cannot have children, extract its index and add it to the resultArray.
 	if (!childElement.couldBeChildren) {
-		const index = childElement.indexElement;
-		if (Array.isArray(index)) {
-			resultArray.push(index);
-		} else {
-			throw new Error("Invalid index element found in child element.");
-		}
+		const index = childElement.indexElement!;
+		resultArray.push(index);
 	} else {
-		// If the childElement can have children, recursively process its children elements.
-		const arrayChildren = childElement.children;
-		if (Array.isArray(arrayChildren)) {
-			for (const subChildElement of arrayChildren) {
-				flattenChildElement(subChildElement, resultArray);
-			}
-		} else {
-			throw new Error("Invalid children element found in child element.");
+		const arrayChildren = childElement.children!;
+		for (const subChildElement of arrayChildren) {
+			flattenChildElement(subChildElement, resultArray);
 		}
 	}
 }
@@ -365,16 +355,31 @@ function flattenChildElement(childElement: SkeletonStructure, resultArray: Array
  * @returns {Map<string, VarName>} - A map containing variables and their values.
  * @throws {Error} If the input is not an array or if any element in the array is invalid.
  */
-function createIndexVarName(varNames: { [p: string]: string }[], template: Template) {
+function createIndexVarName(varNames: ObjectWithStrings[], template: Template) {
+	let arrVarNamesForTemplate = Array.from(template.arrVarName);
 	const resultVarNameArray = varNames.map((varName) => {
 		const key = Object.keys(varName)[0];
-		const foundVarName = template.arrVarName.find((vn) => key === vn);
+		const foundVarName = arrVarNamesForTemplate.find((vn) => {
+			if (key === vn) {
+				arrVarNamesForTemplate = arrVarNamesForTemplate.filter(item => item !== vn);
+				return true;
+			} else {
+				return false;
+			}
+		});
 		if (foundVarName !== undefined) {
 			return varName;
 		}
 		return null;
-	}).filter((varName): varName is { [p: string]: string } => varName !== null);
-	// Create a variable map using the filtered 'resultVarNameArray'.
+	}).filter((varName): varName is ObjectWithStrings => varName !== null);
+	if (arrVarNamesForTemplate.length > 0) {
+		const variableForTemplate = arrVarNamesForTemplate.map(item => {
+			return {[item]: ""};
+		});
+		variableForTemplate.forEach(varName => {
+			resultVarNameArray.push(varName);
+		});
+	}
 	return createVarNameMap(resultVarNameArray);
 }
 
@@ -385,19 +390,12 @@ function createIndexVarName(varNames: { [p: string]: string }[], template: Templ
  * @returns {Map<string, VarName>} - A map containing variables and their corresponding VarName objects.
  * @throws {Error} If the input is not an array or if any element in the array is invalid.
  */
-function createVarNameMap(variables: ({ [p: string]: string } | undefined)[]) {
-	if (!Array.isArray(variables)) {
-		throw new Error("Input must be an array.");
-	}
+function createVarNameMap(variables: ObjectWithStrings[]) {
 	const variableMap = new Map<string, VarName>();
 	variables.forEach((variable) => {
-		if (typeof variable === "object" && Object.keys(variable).length === 1) {
-			const [key] = Object.keys(variable);
-			const value = variable[key];
-			variableMap.set("{" + key + "}", {name: key, value: value});
-		} else {
-			throw new Error("Invalid element found in the input array. Each element should be an object with a single key-value pair.");
-		}
+		const [key] = Object.keys(variable);
+		const value = variable[key];
+		variableMap.set("{" + key + "}", {name: key, value: value});
 	});
 	return variableMap;
 }
@@ -416,11 +414,10 @@ function createIdDataMapFromIndex(orderArray: number[][], indexDataMap: Map<stri
 	for (let i = 0; i < orderArray.length; i++) {
 		const key = orderArray[i].join(",");
 		if (indexDataMap.has(key)) {
-			const text = indexDataMap.get(key);
-			if (text !== undefined) {
-				// Replace variables in the 'text' using 'nameVariableMap' and store the result in 'idDataMap' under the 'key'.
-				idDataMap.set(key, replaceTextWithVariables(nameVariableMap, text));
-			}
+			const text = indexDataMap.get(key)!;
+			idDataMap.set(key, replaceTextWithVariables(nameVariableMap, text));
+		} else {
+			idDataMap.set(key, [""]);
 		}
 	}
 	return idDataMap;

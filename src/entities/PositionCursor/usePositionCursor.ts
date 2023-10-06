@@ -1,7 +1,6 @@
 import {useState} from "react";
 
 
-
 /**
  * The `usePositionCursor` hook provides functions for managing cursor positions.
  * It allows you to set, get, and delete cursor positions for various elements.
@@ -9,7 +8,7 @@ import {useState} from "react";
  * @returns {[string, Function, Function, Function]} An array containing the index of the current element in focus,
  * a function for getting cursor position, a function for setting cursor position, and a function for deleting cursor position.
  */
-export function usePositionCursor(){
+export function usePositionCursor() {
 
 	/**
 	 * Represents the current cursor state, including the index of the focused element
@@ -17,11 +16,14 @@ export function usePositionCursor(){
 	 */
 	interface CursorState {
 		indexElement: string;
-		positionCursor: Map<string,number>;
+		positionCursor: Map<string, number>;
 
 	}
-	// Initialize cursor position state with an initial value
-	const [ dataCursor, setDataCursor ] = useState<CursorState>({indexElement: "0",positionCursor: new Map().set("0", 0)});
+
+	const [dataCursor, setDataCursor] = useState<CursorState>({
+		indexElement: "0",
+		positionCursor: new Map().set("0", 0)
+	});
 
 	/**
 	 * The `setPosition` function sets the cursor position for the specified element.
@@ -29,10 +31,10 @@ export function usePositionCursor(){
 	 * @param {string} indexElement The index of the element for which the cursor position is set.
 	 * @param {number} position The new cursor position.
 	 */
-	function setPosition(indexElement: string, position: number){
+	function setPosition(indexElement: string, position: number) {
 		const newMap = new Map(dataCursor.positionCursor);
 		newMap.set(indexElement, position);
-		setDataCursor({indexElement: indexElement,positionCursor: newMap});
+		setDataCursor({indexElement: indexElement, positionCursor: newMap});
 	}
 
 	/**
@@ -41,26 +43,28 @@ export function usePositionCursor(){
 	 * @param {string} indexElement The index of the element for which the cursor position is needed.
 	 * @returns {number} The current cursor position for the specified element.
 	 */
-	function getPosition(indexElement: string){
+	function getPosition(indexElement: string) {
 		let positionCursor = 0;
-		if(dataCursor.positionCursor.has(indexElement)){
+		if (dataCursor.positionCursor.has(indexElement)) {
 			const dataForMap = dataCursor.positionCursor.get(indexElement);
-			if(dataForMap){
-				positionCursor=dataForMap;
+			if (dataForMap) {
+				positionCursor = dataForMap;
 			}
 		}
 		return positionCursor;
 	}
-	// The index of the element with focus
+
 	const cursorElementIndex = dataCursor.indexElement;
+
 	/**
 	 * The `deletePosition` function removes cursor position information.
 	 *
 	 * @param {number[]} indexFocusElement The index of the element for which the position is deleted.
+	 *                                    Pass an empty array to delete positions for all elements.
 	 * @param {string} indexElementNewFocus The index of the element to which focus will be set after deleting the position.
 	 * @param {number} newPosition The new cursor position for the element to which focus will be set.
 	 */
-	function deletePosition(indexFocusElement: Array<number>, indexElementNewFocus: string, newPosition: number ){
+	function deletePosition(indexFocusElement: Array<number>, indexElementNewFocus: string, newPosition: number) {
 		const newMap = new Map(dataCursor.positionCursor);
 		for (const key of newMap.keys()) {
 			const arrayKey = key.split(",").map(Number);
@@ -72,6 +76,7 @@ export function usePositionCursor(){
 		newMap.set(indexElementNewFocus, newPosition);
 		setDataCursor({indexElement: indexElementNewFocus, positionCursor: newMap});
 	}
+
 	return [cursorElementIndex, getPosition, setPosition, deletePosition] as const;
 }
 

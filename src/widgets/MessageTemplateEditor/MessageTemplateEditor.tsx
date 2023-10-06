@@ -4,7 +4,6 @@ import {ShowStructures} from "../../features/ShowStructures";
 import { addVarNameToTextWithPosition } from "../../features/addVarNameForText";
 import {addElement} from "../../features/addIfThenElseBlock";
 import {deleteBlock} from "../../features/deleteBlock";
-
 import {SkeletonStructure} from "../../entities/sceletonStructure";
 import {VarNameButtons} from "../../entities/VarNameButtons";
 import {usePositionCursor} from "../../entities/PositionCursor";
@@ -22,8 +21,8 @@ import styles from "./message_template_editor.module.css";
  */
 interface MessageTemplateEditorProps {
 	arrVarNames: Array<string>;
-	template: Template;
-	callbackSave: (template: Template) => void;
+	template?: Template;
+	callbackSave: (template: Template) => Promise<void>;
 }
 
 export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
@@ -66,32 +65,27 @@ export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 	const [focusElement, getPosition, setPosition, deletePosition] = usePositionCursor();
 	const [indexDataMap, updateElementText, setElementDataMap] = useElementDataMap(indexDataMapLoad);
 	const [struct, setStruct] = useState<SkeletonStructure>(templateStructure);
-	// Function to add a variable to the template at the current cursor position.
 	function addVarNameForData(varName: string) {
-		const {updateData, newPositionCursor} = addVarNameToTextWithPosition(varName, indexDataMap, focusElement, getPosition);
+		const {updateData, newPositionCursor} = addVarNameToTextWithPosition(varName, indexDataMap, focusElement, getPosition(focusElement));
 		setElementDataMap(updateData)
 		setPosition(newPositionCursor.indexElement, newPositionCursor.positionCursor);
 	}
-	// Function to add an "if-then-else" block to the template at the current cursor position.
 	function addBlockIfThenElse() {
 		const [ structNew, newMap, newPosition ] = addElement( focusElement, getPosition(focusElement), indexDataMap, struct );
 		setStruct(structNew);
 		setPosition(newPosition.indexElement, newPosition.positionCursor);
 		setElementDataMap(newMap);
 	}
-	// Function to delete an "if-then-else" block from the template.
-	// If there is divided text within the block, it will be merged.
+
 	function deleteBlockElement(indexElement: number[]) {
 		const [newIndexDataMap, newStruct, newPosition] = deleteBlock(indexElement, indexDataMap, struct);
 		setElementDataMap(newIndexDataMap);
 		setStruct(newStruct);
 		deletePosition(indexElement, newPosition.indexElement, newPosition.positionCursor);
 	}
-	// Function to save the template by calling the provided callback function.
 	function saveTemplate() {
 		callbackSave(getTemplate(varNamesArrayUniq, struct, indexDataMap));
 	}
-	// Function to close and remove the widget from the container.
 	function close() {
 		const container = document.getElementById(CONTAINER_ID);
 		if (container) {
@@ -104,11 +98,8 @@ export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 
 	const [isPreview, setIsPreview] = useState<boolean>(false);
 	return (
-
-
 		<div
 			className={styles.container}>
-
 			{!isPreview ? (
 				<div>
 					<label className={`${styles.title_color} ${styles.widget_title_font_size}`}>

@@ -1,1 +1,1 @@
-export {usePositionCursor} from "./positionCursor";
+export {usePositionCursor} from "./usePositionCursor";

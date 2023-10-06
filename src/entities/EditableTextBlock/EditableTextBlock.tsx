@@ -1,15 +1,17 @@
-import React, {useEffect, useMemo, useRef} from "react";
+import React, {useEffect, useRef} from "react";
 import style from "./editableTextBlock.module.css";
 
 export interface EditableTextBlockProps {
+
 	indexElement: string,
 	updateElementText?: (indexElement: string, dataText: string) => void,
 	indexDataMap: Map<string, string>,
-	focusElement?: string;
-	getPosition?: (indexElement: string) => number;
+	id?: string,
+	focusElement?: string,
+	getPosition?: (indexElement: string) => number,
 	setPositionCursor?: (indexElement: string, positionCursor: number) => void,
 	isReadonly?: boolean,
-	className?: string | undefined
+	className?: string | undefined,
 }
 
 /**
@@ -28,6 +30,7 @@ export interface EditableTextBlockProps {
  * @returns {JSX.Element} Returns a JSX element representing the editable text field.
  */
 export const EditableTextBlock: React.FC<EditableTextBlockProps> = ({
+	id,
 	indexElement,
 	updateElementText,
 	indexDataMap,
@@ -38,24 +41,20 @@ export const EditableTextBlock: React.FC<EditableTextBlockProps> = ({
 	className
 
 }) => {
-	// Create a ref for accessing the textarea element
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-	// Get the current cursor position
-	const positionCursor = getPosition? getPosition(indexElement) : 0;
-	// Set the focused element
-	const focusEl= focusElement? focusElement : indexElement;
-	// Get the text from the data map based on the element's index
+	const positionCursor = getPosition ? getPosition(indexElement) : 0;
+	const focusEl = focusElement ? focusElement : indexElement;
 	const data = indexDataMap.has(indexElement) ? indexDataMap.get(indexElement) : "";
 
-	useEffect(()=>{
+	useEffect(() => {
 		// Set focus and cursor position when focus or position changes
-		if(focusEl === indexElement){
-			if(textareaRef !== null){
-				if(textareaRef.current){
+		if (focusEl === indexElement) {
+			if (textareaRef !== null) {
+				if (textareaRef.current) {
 					const component = textareaRef.current;
-					if(component){
+					if (component) {
 						component.focus();
-						if(component.selectionStart !== positionCursor){
+						if (component.selectionStart !== positionCursor) {
 							component.selectionStart = positionCursor;
 							component.selectionEnd = positionCursor;
 						}
@@ -63,83 +62,91 @@ export const EditableTextBlock: React.FC<EditableTextBlockProps> = ({
 				}
 			}
 		}
-	},[focusEl, positionCursor]);
+	}, [focusEl, positionCursor, indexElement]);
 
 	useEffect(() => {
-		// Automatically set the textarea's height based on its content
+		// Automatically set the textarea height based on its content
 		if (textareaRef.current) {
 			const element = textareaRef.current;
-			element.style.height = "1.1em";
-			element.style.height = element.scrollHeight + "px";
+			if (element) {
+				element.style.height = "1.1em";
+				const fontSizeInPixels = parseFloat(getComputedStyle(document.body).fontSize);
+				const height = element.offsetHeight;
+				const scrollHeight = element.scrollHeight;
+				if (height > (fontSizeInPixels * 1.1) && scrollHeight !== 0) {
+					element.style.height = scrollHeight + "px";
+				}
+			}
 		}
 	}, [data]);
 
 	/**
-	 * Handler for changes in the textarea's content.
+	 * Handler for changes in the textarea content.
 	 *
 	 * @param {React.ChangeEvent<HTMLTextAreaElement>} e - The change event.
 	 */
-	function onChange(e: React.ChangeEvent<HTMLTextAreaElement>){
+	function onChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
 		const textarea = e.target as HTMLTextAreaElement;
-		if(indexElement === focusEl){
-			if (updateElementText !== undefined) {
+		if (indexElement === focusEl) {
+			if (updateElementText && !isReadonly) {
 				updateElementText(indexElement, e.target.value);
 			}
-			if (setPositionCursor !== undefined) {
+			if (setPositionCursor) {
 				setPositionCursor(indexElement, textarea.selectionStart);
 			}
 		}
-	};
+	}
 
 	/**
 	 * Handler for focusing on the textarea.
 	 *
 	 * @param {React.ChangeEvent<HTMLTextAreaElement>} e - The focus event.
 	 */
-	function onFocus(e: React.ChangeEvent<HTMLTextAreaElement>){
+	function onFocus(e: React.ChangeEvent<HTMLTextAreaElement>) {
 		const textarea = e.target as HTMLTextAreaElement;
-		if(focusEl !== indexElement) {
+		if (focusEl !== indexElement) {
 			textarea.selectionStart = positionCursor;
 			if (setPositionCursor) {
-				//textarea.selectionStart = textarea.value.length;
 				setPositionCursor(indexElement, positionCursor);
 			}
 		}
-	};
+	}
+
 
 	/**
 	 * Handler for clicking on the textarea.
 	 *
 	 * @param {React.MouseEvent<HTMLTextAreaElement>} e - The click event.
 	 */
-	function onClick(e: React.MouseEvent<HTMLTextAreaElement>){
+	function onClick(e: React.MouseEvent<HTMLTextAreaElement>) {
 		const textarea = e.target as HTMLTextAreaElement;
-		if(focusEl === indexElement){
+		if (focusEl === indexElement) {
 			if (setPositionCursor) {
 				setPositionCursor(indexElement, textarea.selectionStart);
 			}
 		}
-	};
+	}
 
 	/**
 	 * Handler for key up events.
 	 *
 	 * @param {React.KeyboardEvent} e - The key up event.
 	 */
-	function onKeyUp(e: React.KeyboardEvent){
+	function onKeyUp(e: React.KeyboardEvent) {
 		if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
 			const textarea = e.target as HTMLTextAreaElement;
-			if(focusEl === indexElement){
+			if (focusEl === indexElement) {
 				if (setPositionCursor) {
 					setPositionCursor(indexElement, textarea.selectionStart);
 				}
 			}
 		}
-	};
+	}
 
 	return (
 		<div>
 		  <textarea
+			  id={id}
 			  readOnly={isReadonly}
 			  ref={textareaRef}
 			  onFocus={onFocus}

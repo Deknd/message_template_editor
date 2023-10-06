@@ -1,23 +1,25 @@
+
+
 /**
  * The `SkeletonStructure` class represents the structure of a message template and manages it.
  */
 export class SkeletonStructure {
 
 	private childCount: number; // Counter for children of the current structure.
-	public readonly couldBeChildren: boolean; // Indicates whether the current structure can have children.
-	public readonly indexElement: Array<number> | null; // The index of the element or null if the index is undefined.
-	public readonly block: string | null; // The type of the element's block (if, then, else) or null if the block is undefined.
-	public children: Array<SkeletonStructure> | null; // Array of children for the current structure.
+	public readonly couldBeChildren: boolean;
+	public readonly indexElement: Array<number> | null;
+	public readonly block: string | null;
+	public children: Array<SkeletonStructure> | null;
 
 	/**
 	 * Creates a new `SkeletonStructure`.
 	 * @param couldBeChildren A marker indicating whether the current structure can have children.
-	 * @param index The index of the element or null if the index is not defined.
+	 * @param indexElement The index of the element or null if the index is not defined.
 	 * @param children An array of children or null if there are no children.
 	 * @param block The type of the element's block (if, then, else) or null if the block is not defined.
 	 */
-	constructor(couldBeChildren: boolean, index: Array<number> | null = null, children?: Array<SkeletonStructure> | null, block: string | null = null) {
-		this.indexElement = index;
+	constructor(couldBeChildren: boolean, indexElement: Array<number> | null = null, children?: Array<SkeletonStructure> | null, block: string | null = null) {
+		this.indexElement = indexElement;
 		this.couldBeChildren = couldBeChildren;
 		this.block = block;
 		this.childCount = 0;
@@ -39,7 +41,7 @@ export class SkeletonStructure {
 	 * @param block The type of the element's block (if, then, else) or null if the block is not defined.
 	 * @returns The created element or null if creation failed.
 	 */
-	private createChildrenToParent(couldBeChildren: boolean, positionElementFromArray: number | null, block: string | null,): SkeletonStructure | null {
+	private createChildrenToParent(couldBeChildren: boolean, positionElementFromArray: number | null, block: string | null,): SkeletonStructure | undefined {
 		if (this.couldBeChildren) {
 			const indexArray = new Array<number>();
 			if (this.indexElement === null) {
@@ -62,7 +64,6 @@ export class SkeletonStructure {
 			}
 			return newElement;
 		}
-		return null;
 	}
 
 	/**
@@ -94,13 +95,12 @@ export class SkeletonStructure {
 	 */
 	public findPositionElementInTemplateStructure(focusIndex: string): number {
 		if (this.children === null) {
-			return 0;
+			return -1;
 		}
 		return this.children.findIndex((element) => {
 			if (element !== null) {
 				return element.indexElement?.join(",") === focusIndex;
 			}
-			return false;
 		});
 
 	}
@@ -115,16 +115,14 @@ export class SkeletonStructure {
 		if (numberIndexElementParent === 0) {
 			return this;
 		}
-		let parentElement: SkeletonStructure | null = this;
+		let parentElement: SkeletonStructure = this;
 		let doneWay: Array<number> = [];
 		let targetIndex: number | null = null;
 		for (let i = 0; i < numberIndexElementParent; i++) {
 			doneWay.push(focusElement[i]);
-			if (parentElement === null) {
-				return;
-			}
+
 			targetIndex = parentElement.findPositionElementInTemplateStructure(doneWay.join(","));
-			if (targetIndex === null) {
+			if (targetIndex === null || targetIndex === -1) {
 				return;
 			}
 			const arrayCompsF: SkeletonStructure[] | null = parentElement.children;
@@ -199,3 +197,22 @@ enum TypeBlock {
 
 
 
+export function isElement(indexElement: string, struct: SkeletonStructure): boolean {
+	const parent = struct.findParentElementByPath(indexElement.split(",").map(Number));
+	if (!parent) {
+		return false;
+	}
+	const position = parent.findPositionElementInTemplateStructure(indexElement);
+	if (position === -1) {
+		return false;
+	}
+	const children = parent.children;
+	if (!children) {
+		return false;
+	}
+	const element = children[position];
+	if (!element) {
+		return false;
+	}
+	return true;
+}

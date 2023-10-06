@@ -75,7 +75,6 @@ export const IfThenElse: React.FC<ConditionalBlockProps> = ({
 						return null;
 					}
 					if (element.couldBeChildren && element.indexElement !== null) {
-						// If the element can have child elements, render nested IfThenElse component
 						const struct = element.children;
 						const elementKey = `${index}${element.indexElement}_if_then_else`;
 						return (

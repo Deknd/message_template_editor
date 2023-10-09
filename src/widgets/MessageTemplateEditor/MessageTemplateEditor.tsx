@@ -38,9 +38,6 @@ export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 	// and variables from the template, if it exists.
 	const varNamesArrayUniq = useMemo(() => {
 		let combinedArray = [...arrVarNames];
-		if (template) {
-			combinedArray = [...combinedArray, ...template.arrVarName];
-		}
 		return Array.from(new Set(combinedArray));
 	}, [arrVarNames, template]);
 	// Create a memoized template structure.
@@ -66,14 +63,16 @@ export const MessageTemplateEditor: React.FC<MessageTemplateEditorProps> = (
 	const [indexDataMap, updateElementText, setElementDataMap] = useElementDataMap(indexDataMapLoad);
 	const [struct, setStruct] = useState<SkeletonStructure>(templateStructure);
 	function addVarNameForData(varName: string) {
+
 		const {updateData, newPositionCursor} = addVarNameToTextWithPosition(varName, indexDataMap, focusElement, getPosition(focusElement));
 		setElementDataMap(updateData)
 		setPosition(newPositionCursor.indexElement, newPositionCursor.positionCursor);
 	}
 	function addBlockIfThenElse() {
+		const pos = {id: focusElement, pos: getPosition(focusElement)}
 		const [ structNew, newMap, newPosition ] = addElement( focusElement, getPosition(focusElement), indexDataMap, struct );
 		setStruct(structNew);
-		setPosition(newPosition.indexElement, newPosition.positionCursor);
+		setPosition(pos.id, pos.pos);
 		setElementDataMap(newMap);
 	}
 

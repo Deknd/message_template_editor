@@ -1,9 +1,9 @@
-import React, {useState} from "react";
+import React from "react";
 
 import style from "./main.module.css";
 import {MessageTemplateEditor} from "../../widgets/MessageTemplateEditor";
 import {createRoot} from "react-dom/client";
-import { Template } from "../../entities/Template";
+import {Template} from "../../entities/Template";
 
 
 export const Main = () => {

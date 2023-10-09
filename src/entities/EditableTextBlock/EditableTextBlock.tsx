@@ -46,6 +46,7 @@ export const EditableTextBlock: React.FC<EditableTextBlockProps> = ({
 	const focusEl = focusElement ? focusElement : indexElement;
 	const data = indexDataMap.has(indexElement) ? indexDataMap.get(indexElement) : "";
 
+	console.log("indexElement: ",indexElement," id: ",id," map: ",indexDataMap," ")
 	useEffect(() => {
 		// Set focus and cursor position when focus or position changes
 		if (focusEl === indexElement) {
@@ -62,7 +63,7 @@ export const EditableTextBlock: React.FC<EditableTextBlockProps> = ({
 				}
 			}
 		}
-	}, [focusEl, positionCursor, indexElement]);
+	}, [focusEl, positionCursor, indexElement, indexDataMap]);
 
 	useEffect(() => {
 		// Automatically set the textarea height based on its content
